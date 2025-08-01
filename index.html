@@ -124,10 +124,21 @@
                         <td>${user.name}</td>
                         <td>${user.email}</td>
                         <td>
-                            <button onclick="showEditForm('${user._id}', '${user.name}', '${user.email}')">Edit</button>
+                            <button 
+                                class="edit-btn" 
+                                data-id="${user._id}" 
+                                data-name="${user.name}" 
+                                data-email="${user.email}">
+                                Edit
+                            </button>
                             <button onclick="deleteUser('${user._id}')">Delete</button>
                         </td>
                     `;
+                });
+                document.querySelectorAll('.edit-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        showEditForm(button.dataset.id, button.dataset.name, button.dataset.email);
+                    });
                 });
             } catch (error) {
                 console.error('Error fetching users:', error);
@@ -163,7 +174,7 @@
             document.getElementById('editId').value = id;
             document.getElementById('editName').value = name;
             document.getElementById('editEmail').value = email;
-            window.scrollTo(0, 0); // Scroll to the top to show the form
+            window.scrollTo(0, 0);
         }
 
         function hideEditForm() {
