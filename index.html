@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My User Management App</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        h1 { color: #333; }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #usersList {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        #usersList th, #usersList td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #usersList th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .user-form, .edit-form {
+            margin-bottom: 20px;
+        }
+        .user-form input, .user-form button,
+        .edit-form input, .edit-form button {
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: calc(100% - 22px);
+        }
+        .user-form button, .edit-form button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            width: auto;
+        }
+        .user-form button:hover, .edit-form button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>User Management Dashboard</h1>
+
+        <div class="user-form">
+            <h2>Create New User</h2>
+            <input type="text" id="newName" placeholder="Name">
+            <input type="email" id="newEmail" placeholder="Email">
+            <button onclick="createUser()">Add User</button>
+            <div id="createMessage" class="message"></div>
+        </div>
+
+        <div class="edit-form" id="editForm" style="display: none;">
+            <h2>Edit User</h2>
+            <input type="hidden" id="editId">
+            <input type="text" id="editName" placeholder="Name">
+            <input type="email" id="editEmail" placeholder="Email">
+            <button onclick="updateUser()">Save Changes</button>
+            <button onclick="hideEditForm()">Cancel</button>
+            <div id="editMessage" class="message"></div>
+        </div>
+
+        <h2>Current Users</h2>
+        <table id="usersList">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const usersTableBody = document.querySelector('#usersList tbody');
+        const createMessageDiv = document.getElementById('createMessage');
+        const editFormDiv = document.getElementById('editForm');
+        const editMessageDiv = document.getElementById('editMessage');
+
+        function displayMessage(element, message, type) {
+            element.textContent = message;
+            element.className = `message ${type}`;
+            element.style.display = 'block';
+            setTimeout(() => { element.style.display = 'none'; }, 3000);
+        }
+
+        async function fetchUsers() {
+            try {
+                const response = await fetch('/api/users');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const users = await response.json();
+                usersTableBody.innerHTML = '';
+                users.forEach(user => {
+                    const row = usersTableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${user.name}</td>
+                        <td>${user.email}</td>
+                        <td>
+                            <button onclick="showEditForm('${user._id}', '${user.name}', '${user.email}')">Edit</button>
+                            <button onclick="deleteUser('${user._id}')">Delete</button>
+                        </td>
+                    `;
+                });
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                alert('Failed to load users.');
+            }
+        }
+
+        async function createUser() {
+            const name = document.getElementById('newName').value;
+            const email = document.getElementById('newEmail').value;
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email }),
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || 'Failed to create user.');
+                }
+                displayMessage(createMessageDiv, result.message, 'success');
+                document.getElementById('newName').value = '';
+                document.getElementById('newEmail').value = '';
+                fetchUsers();
+            } catch (error) {
+                console.error('Error creating user:', error);
+                displayMessage(createMessageDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function showEditForm(id, name, email) {
+            editFormDiv.style.display = 'block';
+            document.getElementById('editId').value = id;
+            document.getElementById('editName').value = name;
+            document.getElementById('editEmail').value = email;
+            window.scrollTo(0, 0); // Scroll to the top to show the form
+        }
+
+        function hideEditForm() {
+            editFormDiv.style.display = 'none';
+        }
+
+        async function updateUser() {
+            const id = document.getElementById('editId').value;
+            const name = document.getElementById('editName').value;
+            const email = document.getElementById('editEmail').value;
+            try {
+                const response = await fetch(`/api/users/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email }),
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || 'Failed to update user.');
+                }
+                displayMessage(editMessageDiv, result.message, 'success');
+                hideEditForm();
+                fetchUsers();
+            } catch (error) {
+                console.error('Error updating user:', error);
+                displayMessage(editMessageDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function deleteUser(id) {
+            if (!confirm('Are you sure you want to delete this user?')) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/users/${id}`, {
+                    method: 'DELETE',
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || 'Failed to delete user.');
+                }
+                alert(result.message);
+                fetchUsers();
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert(`Error deleting user: ${error.message}`);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchUsers);
+    </script>
+</body>
+</html>
